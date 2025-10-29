@@ -4,7 +4,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./nginx.config.template:/etc/nginx/templates/nginx.config.template
+      - ./ngnix.config.template:/etc/nginx/templates/nginx.conf.template
       - ./start-nginx.sh:/start-nginx.sh
     environment:
       - ACTIVE_POOL=${ACTIVE_POOL}
