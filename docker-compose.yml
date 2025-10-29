@@ -1,0 +1,32 @@
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx.conf.template:/etc/nginx/templates/nginx.conf.template
+      - ./start-nginx.sh:/start-nginx.sh
+    environment:
+      - ACTIVE_POOL=${ACTIVE_POOL}
+    depends_on:
+      - app_blue
+      - app_green
+    command: ["/start-nginx.sh"]
+
+  app_blue:
+    image: ${BLUE_IMAGE}
+    ports:
+      - "8081:8081"
+    environment:
+      - APP_POOL=blue
+      - RELEASE_ID=${RELEASE_ID_BLUE}
+      - PORT=8081
+
+  app_green:
+    image: ${GREEN_IMAGE}
+    ports:
+      - "8082:8082"
+    environment:
+      - APP_POOL=green
+      - RELEASE_ID=${RELEASE_ID_GREEN}
+      - PORT=8082
