@@ -1,3 +1,8 @@
+# Custom log format - captures pool, release, status, upstream
+log_format detailed 'pool=$upstream_http_x_app_pool release=$upstream_http_x_release_id '
+                    'status=$status upstream=$upstream_addr '
+                    'request_time=$request_time upstream_time=$upstream_response_time';
+
 upstream app_servers {
     server app_blue:8081 max_fails=2 fail_timeout=5s ${BLUE_BACKUP};
     server app_green:8082 max_fails=2 fail_timeout=5s ${GREEN_BACKUP};
@@ -6,6 +11,9 @@ upstream app_servers {
 server {
     listen 8080;
     server_name localhost;
+
+    # Use custom log format
+    access_log /var/log/nginx/access.log detailed;
 
     location / {
         proxy_pass http://app_servers;
