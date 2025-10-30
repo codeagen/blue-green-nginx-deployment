@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import time
 import json
@@ -60,7 +59,7 @@ def parse_log_line(line):
 
 def check_error_rate():
     """Calculate error rate over the window"""
-    if len(request_window) < 10:  # Need minimum requests
+    if len(request_window) < 10:
         return 0
     
     error_count = sum(1 for status in request_window if status >= 500)
@@ -81,44 +80,59 @@ def tail_log():
         print(f"Waiting for log file to be created...")
         time.sleep(2)
     
-    with open(LOG_FILE, 'r') as f:
-        # Go to end of file
-        f.seek(0, 2)
-        
-        while True:
-            line = f.readline()
-            if not line:
-                time.sleep(0.1)
-                continue
-            
-            # Parse log line
-            log_data = parse_log_line(line.strip())
-            if not log_data:
-                continue
-            
-            pool = log_data.get('pool')
-            status = int(log_data.get('status', 0))
-            
-            # Track request status
-            request_window.append(status)
-            
-            # Check for failover
-            if pool and last_pool and pool != last_pool:
-                message = f"*Failover Detected!*\nPool changed: `{last_pool}` → `{pool}`"
-                send_slack_alert(message, 'failover')
-            
-            if pool:
-                last_pool = pool
-            
-            # Check error rate
-            error_rate = check_error_rate()
-            if error_rate > ERROR_RATE_THRESHOLD:
-                message = f"*High Error Rate!*\nError rate: `{error_rate:.1f}%` (threshold: {ERROR_RATE_THRESHOLD}%)\nLast {len(request_window)} requests"
-                send_slack_alert(message, 'error_rate')
+    print(f"Log file found. Starting to monitor...\n")
+    
+    # Follow the log file from the beginning
+    line_count = 0
+    while True:
+        try:
+            with open(LOG_FILE, 'r') as f:
+                # Read all existing lines first
+                for line in f:
+                    if not line.strip():
+                        continue
+                    
+                    # Parse log line
+                    log_data = parse_log_line(line.strip())
+                    if not log_data:
+                        continue
+                    
+                    pool = log_data.get('pool')
+                    status_str = log_data.get('status', '0')
+                    
+                    try:
+                        status = int(status_str)
+                    except:
+                        continue
+                    
+                    # Track request status
+                    request_window.append(status)
+                    line_count += 1
+                    
+                    # Check for failover
+                    if pool and last_pool and pool != last_pool:
+                        message = f"Failover Detected!\nPool changed: `{last_pool}` -> `{pool}`"
+                        send_slack_alert(message, 'failover')
+                    
+                    if pool:
+                        last_pool = pool
+                    
+                    # Check error rate
+                    error_rate = check_error_rate()
+                    if error_rate > ERROR_RATE_THRESHOLD:
+                        message = f"High Error Rate!\nError rate: `{error_rate:.1f}%` (threshold: {ERROR_RATE_THRESHOLD}%)\nLast {len(request_window)} requests"
+                        send_slack_alert(message, 'error_rate')
+                
+                # Wait before checking for new lines
+                time.sleep(0.5)
+                
+        except Exception as e:
+            print(f"Error reading log file: {e}")
+            time.sleep(2)
 
 if __name__ == '__main__':
     if not SLACK_WEBHOOK_URL:
-        print("SLACK_WEBHOOK_URL not set!")
+        print("ERROR: SLACK_WEBHOOK_URL not set!")
         exit(1)
     
     print("Starting log watcher...\n")
